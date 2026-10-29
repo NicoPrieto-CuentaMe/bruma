@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Bruma · acordes para música ambient</title>
+    <meta
+      name="description"
+      content="Progresiones de acordes de piano para música ambient y minimalista, dibujadas octava por octava y sintetizadas en el navegador."
+    />
+    <meta name="theme-color" content="#f1eee8" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#111316" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Jost:wght@300;400;500&display=swap"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <div class="mist" aria-hidden="true"><i></i><i></i><i></i></div>
+
+    <div class="page">
+      <header class="masthead">
+        <a class="wordmark" href="./">Bruma</a>
+        <p class="tagline">acordes para música ambient</p>
+      </header>
+
+      <main>
+        <section class="progression" aria-labelledby="title">
+          <div class="heading">
+            <button class="arrow" id="prev" type="button" aria-label="Progresión anterior">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" /></svg>
+            </button>
+            <div class="heading-text" id="heading">
+              <p class="catalog" id="catalog"></p>
+              <h1 id="title">Bruma</h1>
+              <p class="reference" id="reference"></p>
+            </div>
+            <button class="arrow" id="next" type="button" aria-label="Progresión siguiente">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
+            </button>
+          </div>
+
+          <nav class="dots" id="dots" aria-label="Progresiones"></nav>
+
+          <p class="meta" id="meta"></p>
+          <p class="description" id="description"></p>
+
+          <ol class="octaves" id="octaves" aria-label="Acordes de la progresión"></ol>
+
+          <p class="hint">
+            <span class="hint-keys">← → cambia de progresión · espacio reproduce · 1–4 toca cada acorde</span>
+            <span class="hint-touch">desliza para cambiar de progresión · toca un acorde para escucharlo</span>
+          </p>
+        </section>
+      </main>
+
+      <footer class="colophon">
+        <p>
+          Sonido sintetizado en el navegador, sin muestras. Las progresiones están escritas a la manera de cada
+          referente, no transcritas de sus discos.
+        </p>
+        <a href="https://github.com/NicoPrieto-CuentaMe/bruma">código en GitHub</a>
+      </footer>
+    </div>
+
+    <div class="transport" role="region" aria-label="Reproducción">
+      <div class="transport-inner">
+        <button class="play" id="play" type="button" aria-pressed="false" aria-label="Reproducir la progresión">
+          <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.8v12.4L18.6 12z" /></svg>
+          <svg class="icon-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1" /></svg>
+        </button>
+        <label class="tempo">
+          <span class="tempo-label">tempo</span>
+          <input id="tempo" type="range" min="40" max="140" step="1" value="60" />
+          <output id="bpm" for="tempo">60 bpm</output>
+        </label>
+        <div class="notation" role="group" aria-label="Nombres de las notas">
+          <button type="button" data-notation="letters" aria-pressed="true">C D E</button>
+          <button type="button" data-notation="solfege" aria-pressed="false">Do Re Mi</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

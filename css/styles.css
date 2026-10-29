@@ -1,0 +1,739 @@
+/* Bruma: papel, tinta y un solo color por progresión, que tiñe la niebla del fondo y las teclas. */
+
+@property --accent {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #5c7186;
+}
+
+:root {
+  --paper: #f1eee8;
+  --ink: #1c1d20;
+  --ink-soft: #55595f;
+  --ink-faint: #85898f;
+  --line: rgba(28, 29, 32, 0.13);
+  --key-white: #fbfaf7;
+  --key-edge: rgba(28, 29, 32, 0.2);
+  --key-black: #2a2c30;
+  --on-accent: #ffffff;
+  --accent: var(--accent-light, #5c7186);
+  --bar: rgba(241, 238, 232, 0.8);
+  --mist: 30%;
+  --sans: 'Jost', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  color-scheme: light;
+  transition: --accent 1.4s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #111316;
+    --ink: #e8e5de;
+    --ink-soft: #a5a7ab;
+    --ink-faint: #74787e;
+    --line: rgba(232, 229, 222, 0.12);
+    --key-white: #25282d;
+    --key-edge: rgba(232, 229, 222, 0.09);
+    --key-black: #0a0b0d;
+    --on-accent: #111316;
+    --accent: var(--accent-dark, #a3b6c9);
+    --bar: rgba(17, 19, 22, 0.78);
+    --mist: 17%;
+    color-scheme: dark;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* Grano de papel sobre todo, muy tenue. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* --- Niebla: tres manchas del color de la progresión que derivan muy despacio --- */
+
+.mist {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mist i {
+  position: absolute;
+  width: 80vmax;
+  height: 80vmax;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--accent) var(--mist), transparent), transparent);
+  animation: drift 70s ease-in-out infinite alternate;
+}
+
+.mist i:nth-child(1) {
+  top: -42vmax;
+  left: -30vmax;
+}
+
+.mist i:nth-child(2) {
+  top: 25vh;
+  right: -48vmax;
+  animation-duration: 90s;
+  animation-delay: -30s;
+}
+
+.mist i:nth-child(3) {
+  bottom: -55vmax;
+  left: 5vw;
+  animation-duration: 110s;
+  animation-delay: -60s;
+}
+
+@keyframes drift {
+  to {
+    transform: translate3d(9vmax, 6vmax, 0) scale(1.15);
+  }
+}
+
+/* --- Página --- */
+
+.page {
+  width: min(100%, 780px);
+  margin: 0 auto;
+  padding: 0 16px calc(130px + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 720px) {
+  .page {
+    padding-inline: 32px;
+  }
+}
+
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding-top: 28px;
+}
+
+.wordmark {
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.5em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+.tagline {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+/* --- Cabecera de la progresión --- */
+
+.heading {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  margin-top: clamp(48px, 10vh, 96px);
+  text-align: center;
+}
+
+.arrow {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    border-color 0.4s,
+    color 0.4s;
+}
+
+.arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.arrow:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.catalog {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--ink-faint);
+  white-space: pre;
+}
+
+h1 {
+  margin: 14px 0 10px;
+  font-size: clamp(46px, 12vw, 78px);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+.reference {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+
+.reference .artist {
+  color: var(--accent);
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 26px;
+}
+
+.dot {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.dot::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--ink-faint);
+  opacity: 0.5;
+  transition:
+    transform 0.4s,
+    opacity 0.4s,
+    background-color 0.4s;
+}
+
+.dot:hover::before {
+  opacity: 1;
+}
+
+.dot[aria-current='true']::before {
+  background: var(--accent);
+  opacity: 1;
+  transform: scale(1.6);
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 28px;
+  margin: 30px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+}
+
+.description {
+  max-width: 54ch;
+  margin: 14px auto 0;
+  text-align: center;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
+/* --- Octavas --- */
+
+.octaves {
+  list-style: none;
+  margin: clamp(40px, 7vh, 64px) 0 0;
+  padding: 0;
+}
+
+.octave {
+  position: relative;
+  border-top: 1px solid var(--line);
+  animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: calc(var(--i) * 90ms);
+}
+
+.octave:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.octave-button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 32px;
+  padding: 26px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.chord {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.chord-name {
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition: color 0.6s;
+}
+
+.chord-minor {
+  font-size: 0.8em;
+}
+
+.chord-quality {
+  margin-left: 0.04em;
+  font-size: 0.56em;
+  vertical-align: 0.62em;
+}
+
+.chord-bass {
+  font-size: 0.62em;
+  color: var(--ink-soft);
+}
+
+.roman {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.voicing {
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
+
+.octave-button:hover .chord-name,
+.octave.is-current .chord-name {
+  color: var(--accent);
+}
+
+.progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  pointer-events: none;
+}
+
+.octave.is-current .progress {
+  animation: progress var(--duration, 8s) linear forwards;
+}
+
+/* --- Teclas --- */
+
+.keys {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.felt {
+  fill: var(--accent);
+  opacity: 0.5;
+}
+
+.key {
+  transition: transform 0.5s ease;
+}
+
+.key path {
+  transition: fill 0.7s ease;
+}
+
+.key.white path {
+  fill: var(--key-white);
+  stroke: var(--key-edge);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+/* El contorno del color de las teclas blancas separa una negra resaltada de la blanca de al lado. */
+.key.black path {
+  fill: var(--key-black);
+  stroke: var(--key-white);
+  stroke-width: 4;
+}
+
+.key.on path {
+  fill: var(--accent);
+}
+
+.key.black.on path {
+  fill: color-mix(in oklab, var(--accent) 82%, black);
+}
+
+.key.struck {
+  transform: translateY(3px);
+  transition-duration: 0s;
+}
+
+.key.on.struck path {
+  fill: color-mix(in oklab, var(--accent) 55%, white);
+  transition-duration: 0s;
+}
+
+.key-label {
+  font-family: var(--sans);
+  font-size: 23px;
+  font-weight: 500;
+  text-anchor: middle;
+  fill: var(--on-accent);
+}
+
+.key.black .key-label {
+  font-size: 19px;
+}
+
+.root-dot {
+  fill: var(--on-accent);
+}
+
+/* --- Pie --- */
+
+.hint {
+  margin: 22px 0 0;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.hint-touch {
+  display: none;
+}
+
+@media (hover: none) {
+  .hint-keys {
+    display: none;
+  }
+  .hint-touch {
+    display: inline;
+  }
+}
+
+.colophon {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+  margin-top: 72px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--ink-faint);
+}
+
+.colophon p {
+  margin: 0;
+  max-width: 62ch;
+}
+
+.colophon a {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* --- Barra de reproducción --- */
+
+.transport {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--bar);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: blur(16px) saturate(1.2);
+}
+
+.transport-inner {
+  width: min(100%, 716px);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.play {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--ink);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background-color 0.4s,
+    border-color 0.4s,
+    color 0.4s;
+}
+
+.play svg {
+  grid-area: 1 / 1;
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.play .icon-stop,
+.play[aria-pressed='true'] .icon-play {
+  display: none;
+}
+
+.play[aria-pressed='true'] .icon-stop {
+  display: block;
+}
+
+.play[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.tempo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.tempo output {
+  min-width: 7ch;
+  text-align: right;
+  color: var(--ink-soft);
+}
+
+input[type='range'] {
+  flex: 1;
+  min-width: 60px;
+  height: 28px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type='range']::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--ink-faint);
+}
+
+input[type='range']::-webkit-slider-thumb {
+  width: 13px;
+  height: 13px;
+  margin-top: -6px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+  -webkit-appearance: none;
+}
+
+input[type='range']::-moz-range-track {
+  height: 1px;
+  background: var(--ink-faint);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ink);
+}
+
+.notation {
+  flex: none;
+  display: flex;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.notation button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
+}
+
+.notation button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* --- Animaciones --- */
+
+.enter {
+  animation: rise 0.8s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* --- Pantallas estrechas --- */
+
+@media (max-width: 640px) {
+  .octave-button {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 22px 0;
+  }
+
+  .chord {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+  }
+
+  .chord-name {
+    font-size: 30px;
+  }
+
+  .voicing {
+    flex-basis: 100%;
+  }
+
+  .transport-inner {
+    gap: 12px;
+  }
+
+  .tempo-label {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    transition: none;
+  }
+
+  .mist i,
+  .octave,
+  .enter {
+    animation: none;
+  }
+
+  .key,
+  .key path {
+    transition: none;
+  }
+}
