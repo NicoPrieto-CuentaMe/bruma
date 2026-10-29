@@ -1,6 +1,6 @@
 // Motor de sonido de Bruma. Todo se sintetiza en el navegador con Web Audio, sin muestras:
-// tres instrumentos (piano de fieltro, piano eléctrico y pad), cinco texturas que deciden
-// cuándo suena cada nota, y un bus con reverberación y eco.
+// cuatro instrumentos (piano de fieltro, piano eléctrico, marimba y campana) más un pad,
+// texturas que deciden cuándo suena cada nota, y un bus con reverberación y eco.
 
 import { midiToFreq } from './theory.js';
 
@@ -68,6 +68,103 @@ const TEXTURES = {
     for (let i = 0; i < count; i++) {
       const swell = Math.sin((Math.PI * (i + 0.5)) / count);
       notes.forEach((midi, j) => hits.push({ beat: i / 2 + j * 0.01, midi, vel: 0.06 + 0.3 * swell }));
+    }
+    return hits;
+  },
+
+  // La mano derecha repite una figura de corcheas sobre el bajo, que suena dos veces.
+  ostinato(notes, beats) {
+    const [bass, ...upper] = notes;
+    const hits = [
+      { beat: 0, midi: bass, vel: 0.42 },
+      { beat: beats / 2, midi: bass, vel: 0.3 },
+    ];
+    if (!upper.length) return hits;
+    const figure = upper.length > 2 ? [...upper, ...upper.slice(1, -1).reverse()] : upper;
+    for (let i = 0; i < beats * 2; i++) {
+      hits.push({ beat: i / 2, midi: figure[i % figure.length], vel: i % figure.length === 0 ? 0.3 : 0.22 });
+    }
+    return hits;
+  },
+
+  // Vals lento en tres por cuatro: el bajo en el primer tiempo y el acorde en el segundo.
+  vals(notes, beats) {
+    const [bass, ...upper] = notes;
+    const hits = [];
+    for (let bar = 0; bar * 3 < beats; bar++) {
+      hits.push({ beat: bar * 3, midi: bass, vel: bar === 0 ? 0.42 : 0.34 });
+      upper.forEach((midi, i) => hits.push({ beat: bar * 3 + 1 + i * 0.015, midi, vel: 0.25 }));
+    }
+    const high = upper.map((m) => m + 12).filter((m) => m <= 88);
+    if (high.length && beats >= 6) hits.push({ beat: 5 + Math.random() * 0.2, midi: pick(high), vel: 0.2 });
+    return hits;
+  },
+
+  // Tintinnabuli: las tres notas más agudas, una octava arriba, en arpegio descendente.
+  // No toca el bajo: lo sostiene el pad.
+  campanas(notes, beats) {
+    const bells = notes.slice(-3).map((m) => m + 12).filter((m) => m <= 88);
+    const hits = [];
+    for (let i = 0; i < beats && bells.length; i++) {
+      hits.push({ beat: i, midi: bells[bells.length - 1 - (i % bells.length)], vel: i % bells.length === 0 ? 0.32 : 0.24 });
+    }
+    return hits;
+  },
+
+  // Bucles de cinta: cada nota se repite con su propio periodo, así que las coincidencias cambian siempre.
+  bucles(notes, beats) {
+    const [bass, ...upper] = notes;
+    const hits = [{ beat: 0, midi: bass, vel: 0.34 }];
+    upper.forEach((midi, i) => {
+      const period = 3.5 + i * 1.75 + Math.random() * 0.5;
+      for (let beat = 0.5 + i * 0.9 + Math.random(); beat < beats; beat += period) {
+        hits.push({ beat, midi, vel: 0.2 + Math.random() * 0.1 });
+      }
+    });
+    return hits;
+  },
+
+  // Dos marimbas con el mismo dibujo de seis notas: la segunda, una octava arriba,
+  // una semicorchea más tarde y dos notas adelantada.
+  fase(notes, beats) {
+    const [bass, ...upper] = notes;
+    const hits = [
+      { beat: 0, midi: bass, vel: 0.38 },
+      { beat: beats / 2, midi: bass, vel: 0.3 },
+    ];
+    if (!upper.length) return hits;
+    const [a, b = a, c = b] = upper;
+    const cell = [a, c, b, c, a, b];
+    for (let i = 0; i < beats * 2; i++) {
+      hits.push({ beat: i / 2, midi: cell[i % 6], vel: 0.28 });
+      const echo = cell[(i + 2) % 6] + 12;
+      if (echo <= 88) hits.push({ beat: i / 2 + 0.25, midi: echo, vel: 0.2 });
+    }
+    return hits;
+  },
+
+  // Casi nada: el bajo y, más tarde, las dos notas más agudas. El resto lo sostiene el pad.
+  aliento(notes, beats) {
+    const hits = [
+      { beat: 0, midi: notes[0], vel: 0.36 },
+      { beat: beats * 0.3 + Math.random() * 0.3, midi: notes[notes.length - 1], vel: 0.22 },
+    ];
+    if (notes.length > 2) {
+      hits.push({ beat: beats * 0.62 + Math.random() * 0.3, midi: notes[notes.length - 2], vel: 0.17 });
+    }
+    return hits;
+  },
+
+  // Notas repetidas en semicorcheas, en orden aleatorio, con una intensidad que va y viene.
+  centelleo(notes, beats) {
+    const [bass, ...upper] = notes;
+    const pool = [...upper, ...upper.map((m) => m + 12)].filter((m) => m <= 88);
+    const hits = [{ beat: 0, midi: bass, vel: 0.36 }];
+    for (let i = 0; i < beats * 4 && pool.length; i++) {
+      const last = hits[hits.length - 1].midi;
+      const options = pool.length > 1 ? pool.filter((m) => m !== last) : pool;
+      const swell = 0.5 + 0.5 * Math.sin((Math.PI * i) / 8);
+      hits.push({ beat: i / 4, midi: pick(options), vel: 0.1 + 0.14 * swell });
     }
     return hits;
   },
@@ -294,6 +391,88 @@ export function createEngine(ctx) {
     });
   }
 
+  // Marimba: la lámina vibra en la fundamental y en un parcial afinado a cuatro veces su
+  // frecuencia, que se apaga mucho antes. El golpe de la baqueta es un soplo de ruido.
+  function marimba(s, midi, t0, vel, t1, release) {
+    const f = midiToFreq(midi);
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = clamp((midi - 60) / 36, -0.5, 0.5);
+    const amp = ctx.createGain();
+    const peak = 0.32 * vel;
+    const decay = clamp(0.5 * Math.sqrt(220 / f), 0.15, 1);
+    amp.gain.setValueAtTime(0, t0);
+    amp.gain.linearRampToValueAtTime(peak, t0 + 0.002);
+    amp.gain.setTargetAtTime(0, t0 + 0.002, decay);
+    if (t1 < t0 + decay * 5) amp.gain.setTargetAtTime(0, t1, Math.min(release, decay));
+    amp.connect(pan).connect(s.out);
+
+    const body = ctx.createOscillator();
+    body.frequency.value = f;
+    body.connect(amp);
+    const overtone = ctx.createOscillator();
+    overtone.frequency.value = f * 4;
+    const overtoneLevel = ctx.createGain();
+    overtoneLevel.gain.setValueAtTime(0.25, t0);
+    overtoneLevel.gain.setTargetAtTime(0, t0, decay / 5);
+    overtone.connect(overtoneLevel).connect(amp);
+
+    const mallet = ctx.createBufferSource();
+    mallet.buffer = noise;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = clamp(f * 3, 400, 4000);
+    const hit = ctx.createGain();
+    hit.gain.setValueAtTime(0, t0);
+    hit.gain.linearRampToValueAtTime(peak * 0.4, t0 + 0.001);
+    hit.gain.setTargetAtTime(0, t0 + 0.001, 0.006);
+    mallet.connect(band).connect(hit).connect(pan);
+
+    const end = Math.min(t1 + release * 7, t0 + decay * 7);
+    for (const osc of [body, overtone]) {
+      osc.start(t0);
+      osc.stop(end);
+    }
+    mallet.start(t0, Math.random() * 0.8, 0.05);
+    own(s, [body, overtone, mallet], () => pan.disconnect());
+  }
+
+  // Campana: FM con la moduladora a 3,5 veces la frecuencia, que da parciales inarmónicos de
+  // metal. El brillo se apaga enseguida y queda un tono casi puro que resuena largo.
+  function campana(s, midi, t0, vel, t1, release) {
+    const f = midiToFreq(midi);
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = clamp((midi - 66) / 30, -0.6, 0.6);
+    const amp = ctx.createGain();
+    const peak = 0.17 * vel * clamp(f / 220, 0.45, 1); // los graves, más suaves
+    const decay = clamp(2.6 * Math.sqrt(440 / f), 0.8, 4.5);
+    const ring = Math.max(release, 0.3); // el metal no se apaga de golpe
+    amp.gain.setValueAtTime(0, t0);
+    amp.gain.linearRampToValueAtTime(peak, t0 + 0.002);
+    amp.gain.setTargetAtTime(0, t0 + 0.002, decay);
+    amp.gain.setTargetAtTime(0, t1, ring);
+    amp.connect(pan).connect(s.out);
+
+    const carrier = ctx.createOscillator();
+    carrier.frequency.value = f;
+    const mod = ctx.createOscillator();
+    mod.frequency.value = f * 3.5;
+    const depth = ctx.createGain();
+    const index = 2.2 * vel * clamp(f / 330, 0.25, 1);
+    depth.gain.setValueAtTime(f * 3.5 * index, t0);
+    depth.gain.setTargetAtTime(f * 3.5 * index * 0.05, t0, 0.25);
+    mod.connect(depth).connect(carrier.frequency);
+    carrier.connect(amp);
+
+    const sources = [carrier, mod];
+    for (const osc of sources) {
+      osc.start(t0);
+      osc.stop(t1 + ring * 7);
+    }
+    own(s, sources, () => pan.disconnect());
+  }
+
+  const INSTRUMENTS = { piano, rhodes, marimba, campana };
+
   // Colchón de dos sierras desafinadas tras un filtro grave: entra y sale muy despacio.
   function pad(s, midi, t0, level, t1) {
     const f = midiToFreq(midi);
@@ -327,7 +506,7 @@ export function createEngine(ctx) {
     const chord = prog.chords[index];
     const beat = 60 / s.bpm;
     const end = start + prog.beats * beat;
-    const play = prog.instrument === 'rhodes' ? rhodes : piano;
+    const play = INSTRUMENTS[prog.instrument] ?? piano;
 
     const hits = TEXTURES[prog.texture](chord.midi, prog.beats)
       .map((h) => ({ ...h, time: start + h.beat * beat }))

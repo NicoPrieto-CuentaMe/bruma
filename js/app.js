@@ -13,7 +13,12 @@ const els = {
   catalog: byId('catalog'),
   title: byId('title'),
   reference: byId('reference'),
-  dots: byId('dots'),
+  openIndex: byId('open-index'),
+  index: byId('index'),
+  indexList: byId('index-list'),
+  indexCount: byId('index-count'),
+  closeIndex: byId('close-index'),
+  random: byId('random'),
   meta: byId('meta'),
   description: byId('description'),
   octaves: byId('octaves'),
@@ -132,8 +137,9 @@ function render({ animate = true } = {}) {
   } else {
     els.reference.textContent = 'tema de apertura';
   }
+  const key = prog.key ? `${noteName(prog.key[0], state.notation)} ${prog.key[1]}` : prog.keyText;
   els.meta.replaceChildren(
-    ...[`${noteName(prog.key[0], state.notation)} ${prog.key[1]}`, prog.sound, prog.texture].map((text) => {
+    ...[key, prog.sound, prog.texture].map((text) => {
       const item = document.createElement('span');
       item.textContent = text;
       return item;
@@ -143,10 +149,6 @@ function render({ animate = true } = {}) {
 
   els.prev.setAttribute('aria-label', `Anterior: ${PROGRESSIONS[wrap(state.index - 1)].title}`);
   els.next.setAttribute('aria-label', `Siguiente: ${PROGRESSIONS[wrap(state.index + 1)].title}`);
-  [...els.dots.children].forEach((dot, i) => {
-    if (i === state.index) dot.setAttribute('aria-current', 'true');
-    else dot.removeAttribute('aria-current');
-  });
 
   els.tempo.value = state.bpm;
   els.bpm.textContent = `${state.bpm} bpm`;
@@ -238,13 +240,53 @@ function select(index) {
 
 const step = (delta) => select(wrap(state.index + delta));
 
+// --- Índice ------------------------------------------------------------------
+
+// Una entrada por progresión, con su número de catálogo, su referente y su color.
 PROGRESSIONS.forEach((prog, i) => {
-  const dot = document.createElement('button');
-  dot.type = 'button';
-  dot.className = 'dot';
-  dot.setAttribute('aria-label', prog.reference ? `${prog.title}, a la manera de ${prog.reference}` : prog.title);
-  dot.addEventListener('click', () => select(i));
-  els.dots.append(dot);
+  const item = document.createElement('li');
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'index-item';
+  button.style.setProperty('--swatch-light', prog.accent.light);
+  button.style.setProperty('--swatch-dark', prog.accent.dark);
+  button.innerHTML = `
+    <span class="index-number"></span>
+    <span class="index-text"><span class="index-title"></span><span class="index-ref"></span></span>
+    <span class="index-swatch" aria-hidden="true"></span>`;
+  button.querySelector('.index-number').textContent = String(i + 1).padStart(3, '0');
+  button.querySelector('.index-title').textContent = prog.title;
+  button.querySelector('.index-ref').textContent = prog.reference ?? 'tema de apertura';
+  button.addEventListener('click', () => {
+    els.index.close();
+    select(i);
+  });
+  item.append(button);
+  els.indexList.append(item);
+});
+els.indexCount.textContent = `${PROGRESSIONS.length} progresiones`;
+
+function openIndex() {
+  const buttons = [...els.indexList.querySelectorAll('.index-item')];
+  buttons.forEach((button, i) => {
+    if (i === state.index) button.setAttribute('aria-current', 'true');
+    else button.removeAttribute('aria-current');
+  });
+  els.index.showModal();
+  buttons[state.index].focus({ preventScroll: true });
+  buttons[state.index].scrollIntoView({ block: 'center' });
+}
+
+els.openIndex.addEventListener('click', openIndex);
+els.closeIndex.addEventListener('click', () => els.index.close());
+// Un clic fuera del panel (en el fondo) lo cierra.
+els.index.addEventListener('click', (e) => {
+  if (e.target === els.index) els.index.close();
+});
+els.random.addEventListener('click', () => {
+  const others = PROGRESSIONS.map((_, i) => i).filter((i) => i !== state.index);
+  els.index.close();
+  select(others[Math.floor(Math.random() * others.length)]);
 });
 
 els.prev.addEventListener('click', () => step(-1));
@@ -267,7 +309,7 @@ els.notation.forEach((button) =>
 );
 
 document.addEventListener('keydown', (e) => {
-  if (e.altKey || e.ctrlKey || e.metaKey || e.repeat) return;
+  if (e.altKey || e.ctrlKey || e.metaKey || e.repeat || els.index.open) return;
   const onSlider = e.target === els.tempo;
   if (e.key === 'ArrowLeft' && !onSlider) {
     e.preventDefault();
@@ -280,6 +322,9 @@ document.addEventListener('keydown', (e) => {
     togglePlay();
   } else if (/^[1-9]$/.test(e.key) && Number(e.key) <= current().chords.length) {
     audition(Number(e.key) - 1);
+  } else if (e.key === 'i' || e.key === 'I') {
+    e.preventDefault();
+    openIndex();
   }
 });
 

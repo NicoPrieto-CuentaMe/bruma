@@ -45,7 +45,10 @@
             </button>
           </div>
 
-          <nav class="dots" id="dots" aria-label="Progresiones"></nav>
+          <button class="index-button" id="open-index" type="button" aria-haspopup="dialog">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" /></svg>
+            <span>índice</span>
+          </button>
 
           <p class="meta" id="meta"></p>
           <p class="description" id="description"></p>
@@ -53,7 +56,7 @@
           <ol class="octaves" id="octaves" aria-label="Acordes de la progresión"></ol>
 
           <p class="hint">
-            <span class="hint-keys">← → cambia de progresión · espacio reproduce · 1–4 toca cada acorde</span>
+            <span class="hint-keys">← → cambia de progresión · espacio reproduce · los números tocan cada acorde · i abre el índice</span>
             <span class="hint-touch">desliza para cambiar de progresión · toca un acorde para escucharlo</span>
           </p>
         </section>
@@ -67,6 +70,20 @@
         <a href="https://github.com/NicoPrieto-CuentaMe/bruma">código en GitHub</a>
       </footer>
     </div>
+
+    <dialog class="index" id="index" aria-labelledby="index-title">
+      <div class="index-head">
+        <div>
+          <h2 id="index-title">Índice</h2>
+          <p class="index-count" id="index-count"></p>
+        </div>
+        <button class="index-random" id="random" type="button">al azar</button>
+        <button class="index-close" id="close-index" type="button" aria-label="Cerrar el índice">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" /></svg>
+        </button>
+      </div>
+      <ol class="index-list" id="index-list"></ol>
+    </dialog>
 
     <div class="transport" role="region" aria-label="Reproducción">
       <div class="transport-inner">
