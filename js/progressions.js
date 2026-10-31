@@ -57,7 +57,7 @@ export const PROGRESSIONS = [
     pad: 0,
     bright: 0.8,
     space: { reverb: 0.32, delay: 0 },
-    gain: 6,
+    gain: 5,
     chords: [
       { root: 'D', quality: 'm(add9)', roman: 'i(add9)', voicing: 'D2 A2 E3 F3 A3' },
       { root: 'Bb', quality: 'maj7', roman: 'VImaj7', voicing: 'Bb1 F2 D3 A3 Bb3' },
@@ -129,7 +129,7 @@ export const PROGRESSIONS = [
     pad: 0,
     bright: 1.05,
     space: { reverb: 0.28, delay: 0 },
-    gain: 2.5,
+    gain: 2,
     chords: [
       { root: 'A', quality: 'm', roman: 'i', voicing: 'A2 E3 A3 C4 E4' },
       { root: 'F', quality: '', roman: 'VI', voicing: 'F2 C3 A3 C4 F4' },
@@ -272,7 +272,7 @@ export const PROGRESSIONS = [
     pad: 0,
     bright: 0.85,
     space: { reverb: 0.32, delay: 0 },
-    gain: 7,
+    gain: 6,
     chords: [
       { root: 'Bb', quality: 'maj7', roman: 'IVmaj7', voicing: 'Bb1 A3 D4 F4' },
       { root: 'F', quality: 'maj7', roman: 'Imaj7', voicing: 'F2 A3 C4 E4' },
@@ -392,7 +392,7 @@ export const PROGRESSIONS = [
     pad: 0,
     bright: 1.05,
     space: { reverb: 0.26, delay: 0 },
-    gain: 3,
+    gain: 2.5,
     chords: [
       { root: 'A', quality: 'm', roman: 'i', voicing: 'A2 E3 A3 C4 E4' },
       { root: 'A', quality: 'm(maj7)', roman: 'i(maj7)', voicing: 'A2 E3 G#3 C4 E4' },
@@ -416,7 +416,7 @@ export const PROGRESSIONS = [
     pad: 0,
     bright: 1,
     space: { reverb: 0.25, delay: 0 },
-    gain: -5,
+    gain: -6,
     chords: [
       { root: 'E', quality: 'm7(add11)', roman: 'i7(add11)', voicing: 'E2 B2 G3 A3 D4' },
       { root: 'A', quality: 'm9', roman: 'iv9', voicing: 'A2 E3 G3 B3 C4' },
@@ -733,7 +733,7 @@ export const PROGRESSIONS = [
     pad: 0,
     bright: 0.75,
     space: { reverb: 0.34, delay: 0 },
-    gain: 7.5,
+    gain: 6,
     chords: [
       { root: 'A', quality: 'm(add9)', roman: 'i(add9)', voicing: 'A2 E3 B3 C4' },
       { root: 'A', quality: 'm7', bass: 'G', roman: 'i7', voicing: 'G2 E3 A3 C4' },

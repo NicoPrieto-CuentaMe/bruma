@@ -50,13 +50,29 @@ Las progresiones están escritas a la manera de cada referente, no transcritas d
 ## Uso
 
 - **← →** o deslizar: cambiar de progresión.
-- **Índice** (o la tecla **i**): todas las progresiones, con un botón para ir a una al azar.
+- **Índice** (o la tecla **I**): todas las progresiones, con un botón para ir a una al azar.
 - **Espacio** o el botón redondo: reproducir en bucle o detener.
 - **Clic en un acorde** (o las teclas **1–8**): escucharlo solo; si la progresión está sonando, salta a él.
 - **Tempo**: se aplica desde el siguiente acorde.
-- **C D E / Do Re Mi**: notación de las notas.
 
 Cada progresión tiene su propia dirección, por ejemplo `#postal`.
+
+## Tocar encima
+
+Bruma está pensada también como acompañamiento para tocar el piano encima.
+
+- **Fondo** (tecla **F**) y **Arpegio** (tecla **A**) son dos capas que comparten el mismo reloj. El fondo es el
+  acorde sostenido (pad); el arpegio, lo que toca el instrumento. Se pueden encender por separado: con solo el
+  fondo, el arpegio lo pones tú. Si enciendes una con la otra sonando, entra a tiempo.
+- **Mantener** (tecla **M**) repite el acorde que suena hasta que lo sueltas, para explorar sobre él.
+- **Atril** (tecla **V**): una vista que cabe entera en la pantalla. El acorde que suena se marca como
+  «ahora», el siguiente lleva una cuenta atrás de los últimos cuatro pulsos, y en cada octava se ven, más
+  tenues, las **notas de color**: las de la escala que suenan bien sobre ese acorde sin chocar.
+- **Ajustes**: volumen de cada capa, duración de cada acorde (×½, ×1, ×2), cuenta de entrada de un compás,
+  afinación (La = 430–450 Hz) y nombres de las notas (C D E / Do Re Mi).
+- **Piano MIDI**: con el piano conectado por USB (en Chrome o Edge), las teclas que tocas se marcan en la
+  octava del acorde que suena; las que no son del acorde ni de color se ven en gris.
+- Mientras suena, la pantalla no se apaga.
 
 ## Probar en local
 
@@ -73,11 +89,11 @@ y abrir http://localhost:8000.
 ```
 index.html
 css/styles.css
-js/app.js           interfaz, controles e índice
+js/app.js           interfaz: lectura, atril, índice, ajustes y MIDI
 js/progressions.js  las progresiones (aquí se añaden nuevas)
 js/keyboard.js      dibujo SVG de una octava
-js/audio.js         síntesis: instrumentos, texturas, reverberación y eco
-js/theory.js        nombres de notas y frecuencias
+js/audio.js         síntesis: instrumentos, texturas, capas, reverberación y eco
+js/theory.js        nombres de notas, frecuencias, escalas y notas de color
 ```
 
 ## Añadir una progresión

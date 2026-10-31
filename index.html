@@ -15,7 +15,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Jost:wght@300;400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Jost:wght@200;300;400;500&display=swap"
     />
     <link rel="stylesheet" href="css/styles.css" />
     <script type="module" src="js/app.js"></script>
@@ -23,13 +23,20 @@
   <body>
     <div class="mist" aria-hidden="true"><i></i><i></i><i></i></div>
 
-    <div class="page">
+    <!-- Vista de lectura: la progresión explicada, con sus octavas una debajo de otra. -->
+    <div class="page" id="page">
       <header class="masthead">
         <a class="wordmark" href="./">Bruma</a>
-        <p class="tagline">acordes para música ambient</p>
+        <div class="masthead-right">
+          <p class="tagline">acordes para música ambient</p>
+          <button class="pill" id="to-atril" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v9H5zM12 13v7M8 20h8" /></svg>
+            <span>atril</span>
+          </button>
+        </div>
       </header>
 
-      <main>
+      <main id="lectura">
         <section class="progression" aria-labelledby="title">
           <div class="heading">
             <button class="arrow" id="prev" type="button" aria-label="Progresión anterior">
@@ -45,7 +52,7 @@
             </button>
           </div>
 
-          <button class="index-button" id="open-index" type="button" aria-haspopup="dialog">
+          <button class="pill index-button" id="open-index" type="button" aria-haspopup="dialog">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" /></svg>
             <span>índice</span>
           </button>
@@ -56,7 +63,10 @@
           <ol class="octaves" id="octaves" aria-label="Acordes de la progresión"></ol>
 
           <p class="hint">
-            <span class="hint-keys">← → cambia de progresión · espacio reproduce · los números tocan cada acorde · i abre el índice</span>
+            <span class="hint-keys"
+              >espacio reproduce · F fondo · A arpegio · M mantener · ← → progresión · números: acordes · V atril · I
+              índice</span
+            >
             <span class="hint-touch">desliza para cambiar de progresión · toca un acorde para escucharlo</span>
           </p>
         </section>
@@ -70,6 +80,40 @@
         <a href="https://github.com/NicoPrieto-CuentaMe/bruma">código en GitHub</a>
       </footer>
     </div>
+
+    <!-- Vista atril: todos los acordes a la vista para tocar encima, sin desplazarse. -->
+    <section class="atril" id="atril" aria-label="Atril" hidden>
+      <header class="atril-head">
+        <button class="arrow" id="atril-prev" type="button" aria-label="Progresión anterior">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5" /></svg>
+        </button>
+        <div class="atril-title">
+          <span class="catalog" id="atril-catalog"></span>
+          <h2 id="atril-name"></h2>
+          <span class="reference" id="atril-reference"></span>
+          <span class="atril-key" id="atril-key"></span>
+        </div>
+        <p class="atril-legend" aria-hidden="true">
+          <span><i class="swatch swatch-on"></i>acorde</span>
+          <span><i class="swatch swatch-color"></i>color</span>
+          <span><i class="swatch swatch-pressed"></i>tus teclas</span>
+        </p>
+        <button class="arrow" id="atril-next" type="button" aria-label="Progresión siguiente">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
+        </button>
+        <button class="pill" id="atril-index" type="button" aria-haspopup="dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" /></svg>
+          <span>índice</span>
+        </button>
+        <button class="pill" id="to-lectura" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4" /></svg>
+          <span>lectura</span>
+        </button>
+      </header>
+      <ol class="atril-grid" id="atril-grid" aria-label="Acordes de la progresión"></ol>
+    </section>
+
+    <div class="count-in" id="count-in" aria-hidden="true" hidden></div>
 
     <dialog class="index" id="index" aria-labelledby="index-title">
       <div class="index-head">
@@ -85,21 +129,85 @@
       <ol class="index-list" id="index-list"></ol>
     </dialog>
 
-    <div class="transport" role="region" aria-label="Reproducción">
+    <div class="settings" id="ajustes" popover aria-label="Ajustes">
+      <p class="settings-title">Ajustes</p>
+      <div class="setting">
+        <label for="vol-fondo">Volumen del fondo</label>
+        <input id="vol-fondo" type="range" min="0" max="100" step="1" />
+      </div>
+      <div class="setting">
+        <label for="vol-arpegio">Volumen del arpegio</label>
+        <input id="vol-arpegio" type="range" min="0" max="100" step="1" />
+      </div>
+      <div class="setting">
+        <span class="setting-label" id="length-label">Duración de cada acorde</span>
+        <div class="segmented" role="group" aria-labelledby="length-label">
+          <button type="button" data-length="0.5" aria-label="La mitad">×½</button>
+          <button type="button" data-length="1" aria-label="Normal">×1</button>
+          <button type="button" data-length="2" aria-label="El doble">×2</button>
+        </div>
+      </div>
+      <label class="setting setting-row">
+        <span>Cuenta de entrada al empezar</span>
+        <input id="count-in-toggle" class="switch" type="checkbox" />
+      </label>
+      <div class="setting">
+        <label for="tuning">Afinación: <output id="tuning-value" for="tuning"></output></label>
+        <div class="setting-row">
+          <input id="tuning" type="range" min="430" max="450" step="0.5" />
+          <button class="small" id="tuning-reset" type="button">440</button>
+        </div>
+      </div>
+      <div class="setting">
+        <span class="setting-label" id="notation-label">Nombres de las notas</span>
+        <div class="segmented" role="group" aria-labelledby="notation-label">
+          <button type="button" data-notation="letters">C D E</button>
+          <button type="button" data-notation="solfege">Do Re Mi</button>
+        </div>
+      </div>
+      <div class="setting">
+        <span class="setting-label">Piano MIDI</span>
+        <div class="setting-row">
+          <button class="small" id="midi-connect" type="button">Conectar</button>
+          <span class="setting-note" id="midi-status">Las teclas que toques se marcan en el acorde que suena.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="transport" id="transport" role="region" aria-label="Reproducción">
       <div class="transport-inner">
-        <button class="play" id="play" type="button" aria-pressed="false" aria-label="Reproducir la progresión">
+        <button class="play" id="play" type="button" aria-pressed="false" aria-label="Reproducir fondo y arpegio">
           <svg class="icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 5.8v12.4L18.6 12z" /></svg>
           <svg class="icon-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1" /></svg>
+        </button>
+        <button class="layer" id="layer-fondo" type="button" aria-pressed="false" title="Fondo (F)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 9c3-2 6-2 9 0s6 2 9 0M3 15c3-2 6-2 9 0s6 2 9 0" />
+          </svg>
+          <span class="layer-label">Fondo</span>
+        </button>
+        <button class="layer" id="layer-arpegio" type="button" aria-pressed="false" title="Arpegio (A)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h4v-4h4v-4h4V7h4V3" /></svg>
+          <span class="layer-label">Arpegio</span>
+        </button>
+        <button class="layer" id="hold" type="button" aria-pressed="false" title="Mantener el acorde (M)">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M17 3l3 3-3 3M20 6H9a5 5 0 0 0-5 5M7 21l-3-3 3-3M4 18h11a5 5 0 0 0 5-5" />
+          </svg>
+          <span class="layer-label">Mantener</span>
         </button>
         <label class="tempo">
           <span class="tempo-label">tempo</span>
           <input id="tempo" type="range" min="40" max="140" step="1" value="60" />
           <output id="bpm" for="tempo">60 bpm</output>
         </label>
-        <div class="notation" role="group" aria-label="Nombres de las notas">
-          <button type="button" data-notation="letters" aria-pressed="true">C D E</button>
-          <button type="button" data-notation="solfege" aria-pressed="false">Do Re Mi</button>
-        </div>
+        <button class="icon-button" type="button" popovertarget="ajustes" aria-label="Ajustes" title="Ajustes">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h9M17 7h3M4 17h3M11 17h9" />
+            <circle cx="15" cy="7" r="2" />
+            <circle cx="9" cy="17" r="2" />
+          </svg>
+        </button>
       </div>
     </div>
   </body>

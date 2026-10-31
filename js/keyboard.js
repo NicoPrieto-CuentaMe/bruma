@@ -30,8 +30,9 @@ function keyPath(x, w, h, r) {
   return `M${x} 0H${x + w}V${h - r}Q${x + w} ${h} ${x + w - r} ${h}H${x + r}Q${x} ${h} ${x} ${h - r}Z`;
 }
 
-function key(svg, kind, pc, x, w, h, label, isRoot) {
-  const group = svgEl('g', { class: `key ${kind}${label ? ' on' : ''}`, 'data-pc': pc }, svg);
+// role: 'on' (nota del acorde), 'color' (nota de color para improvisar) o nada.
+function key(svg, kind, pc, x, w, h, label, role, isRoot) {
+  const group = svgEl('g', { class: `key ${kind}${role ? ` ${role}` : ''}`, 'data-pc': pc }, svg);
   svgEl('path', { d: keyPath(x, w, h, kind === 'white' ? 9 : 7) }, group);
   if (!label) return;
   const cx = x + w / 2;
@@ -41,20 +42,26 @@ function key(svg, kind, pc, x, w, h, label, isRoot) {
   if (isRoot) svgEl('circle', { cx, cy: y - (kind === 'white' ? 32 : 28), r: 5, class: 'root-dot' }, group);
 }
 
-// labels: Map de clase de nota (0–11) → nombre que se escribe sobre la tecla.
+// labels: Map de clase de nota (0–11) → nombre de las notas del acorde.
+// colors: lo mismo para las notas de color, que se dibujan más tenues.
 // Es decorativo: el botón que lo contiene ya nombra el acorde y sus notas.
-export function octaveSvg({ labels, root }) {
+export function octaveSvg({ labels, root, colors = new Map() }) {
   const svg = svgEl('svg', {
     viewBox: `0 ${-FELT} ${WHITE_W * 7} ${WHITE_H + FELT}`,
     'aria-hidden': 'true',
     class: 'keys',
   });
   svgEl('rect', { x: 0, y: -FELT, width: WHITE_W * 7, height: FELT - 4, rx: 3, class: 'felt' }, svg);
+  const mark = (pc) => {
+    if (labels.has(pc)) return [labels.get(pc), 'on', pc === root];
+    if (colors.has(pc)) return [colors.get(pc), 'color', false];
+    return [null, null, false];
+  };
   WHITE.forEach((pc, i) => {
-    key(svg, 'white', pc, i * WHITE_W + GAP / 2, WHITE_W - GAP, WHITE_H, labels.get(pc), pc === root);
+    key(svg, 'white', pc, i * WHITE_W + GAP / 2, WHITE_W - GAP, WHITE_H, ...mark(pc));
   });
   for (const [pc, center] of BLACK) {
-    key(svg, 'black', pc, center - BLACK_W / 2, BLACK_W, BLACK_H, labels.get(pc), pc === root);
+    key(svg, 'black', pc, center - BLACK_W / 2, BLACK_W, BLACK_H, ...mark(pc));
   }
   return svg;
 }

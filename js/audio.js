@@ -4,9 +4,10 @@
 
 import { midiToFreq } from './theory.js';
 
-const LOOKAHEAD = 1.5; // segundos que se programan por adelantado
+const LOOKAHEAD = 0.8; // segundos que se programan por adelantado
 const TICK_MS = 200;
 const MASTER_GAIN = 2.2;
+const FONDO_PAD = 0.45; // nivel del pad para las progresiones que no lo traen
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const dbToGain = (db) => 10 ** (db / 20);
@@ -271,6 +272,8 @@ export function createEngine(ctx) {
   let sessionCount = 0;
   let events = []; // avisos para la interfaz, ordenados por tiempo
 
+  const hz = (midi) => midiToFreq(midi, engine.tuning);
+
   // Registra las fuentes de una voz para poder cortarlas y liberar el grafo cuando acaben.
   function own(s, sources, cleanup) {
     let alive = sources.length;
@@ -284,7 +287,7 @@ export function createEngine(ctx) {
   }
 
   function piano(s, midi, t0, vel, t1, release) {
-    const f = midiToFreq(midi);
+    const f = hz(midi);
     const bright = s.prog.bright ?? 1;
     const pan = ctx.createStereoPanner();
     pan.pan.value = clamp((midi - 60) / 40, -0.6, 0.6);
@@ -300,7 +303,7 @@ export function createEngine(ctx) {
     amp.gain.setValueAtTime(0, t0);
     amp.gain.linearRampToValueAtTime(peak, t0 + 0.004 + 0.012 * (1 - vel)); // el fieltro suaviza el ataque
     amp.gain.setTargetAtTime(0, t1, release);
-    amp.connect(tone).connect(pan).connect(s.out);
+    amp.connect(tone).connect(pan).connect(s.arpegio);
 
     // Cada parcial decae en dos tiempos (golpe y resonancia), y los agudos se apagan antes.
     const ring = clamp(6 * Math.sqrt(220 / f), 1.2, 9);
@@ -347,7 +350,7 @@ export function createEngine(ctx) {
 
   // Piano eléctrico por FM: una moduladora 1:1 da el cuerpo y otra a 14:1, el «ding» de la púa.
   function rhodes(s, midi, t0, vel, t1, release) {
-    const f = midiToFreq(midi);
+    const f = hz(midi);
     const pan = ctx.createStereoPanner();
     pan.pan.value = clamp((midi - 60) / 48, -0.3, 0.3);
     tremoloDepth.connect(pan.pan);
@@ -378,7 +381,7 @@ export function createEngine(ctx) {
     tineDepth.gain.setValueAtTime(f * 14 * 0.25 * vel, t0);
     tineDepth.gain.setTargetAtTime(0, t0, 0.02);
     tine.connect(tineDepth).connect(carrier.frequency);
-    carrier.connect(amp).connect(tone).connect(pan).connect(s.out);
+    carrier.connect(amp).connect(tone).connect(pan).connect(s.arpegio);
 
     const sources = [carrier, body, tine];
     for (const osc of sources) {
@@ -394,7 +397,7 @@ export function createEngine(ctx) {
   // Marimba: la lámina vibra en la fundamental y en un parcial afinado a cuatro veces su
   // frecuencia, que se apaga mucho antes. El golpe de la baqueta es un soplo de ruido.
   function marimba(s, midi, t0, vel, t1, release) {
-    const f = midiToFreq(midi);
+    const f = hz(midi);
     const pan = ctx.createStereoPanner();
     pan.pan.value = clamp((midi - 60) / 36, -0.5, 0.5);
     const amp = ctx.createGain();
@@ -404,7 +407,7 @@ export function createEngine(ctx) {
     amp.gain.linearRampToValueAtTime(peak, t0 + 0.002);
     amp.gain.setTargetAtTime(0, t0 + 0.002, decay);
     if (t1 < t0 + decay * 5) amp.gain.setTargetAtTime(0, t1, Math.min(release, decay));
-    amp.connect(pan).connect(s.out);
+    amp.connect(pan).connect(s.arpegio);
 
     const body = ctx.createOscillator();
     body.frequency.value = f;
@@ -439,7 +442,7 @@ export function createEngine(ctx) {
   // Campana: FM con la moduladora a 3,5 veces la frecuencia, que da parciales inarmónicos de
   // metal. El brillo se apaga enseguida y queda un tono casi puro que resuena largo.
   function campana(s, midi, t0, vel, t1, release) {
-    const f = midiToFreq(midi);
+    const f = hz(midi);
     const pan = ctx.createStereoPanner();
     pan.pan.value = clamp((midi - 66) / 30, -0.6, 0.6);
     const amp = ctx.createGain();
@@ -450,7 +453,7 @@ export function createEngine(ctx) {
     amp.gain.linearRampToValueAtTime(peak, t0 + 0.002);
     amp.gain.setTargetAtTime(0, t0 + 0.002, decay);
     amp.gain.setTargetAtTime(0, t1, ring);
-    amp.connect(pan).connect(s.out);
+    amp.connect(pan).connect(s.arpegio);
 
     const carrier = ctx.createOscillator();
     carrier.frequency.value = f;
@@ -473,9 +476,24 @@ export function createEngine(ctx) {
 
   const INSTRUMENTS = { piano, rhodes, marimba, campana };
 
+  // Clic de la cuenta de entrada. Va directo al bus para que no le afecte el volumen
+  // de cada progresión ni las capas.
+  function click(s, t0, accent) {
+    const osc = ctx.createOscillator();
+    osc.frequency.value = accent ? 1320 : 990;
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0, t0);
+    amp.gain.linearRampToValueAtTime(accent ? 0.16 : 0.1, t0 + 0.002);
+    amp.gain.setTargetAtTime(0, t0 + 0.002, 0.025);
+    osc.connect(amp).connect(s.meta);
+    osc.start(t0);
+    osc.stop(t0 + 0.2);
+    own(s, [osc], () => amp.disconnect());
+  }
+
   // Colchón de dos sierras desafinadas tras un filtro grave: entra y sale muy despacio.
   function pad(s, midi, t0, level, t1) {
-    const f = midiToFreq(midi);
+    const f = hz(midi);
     const pan = ctx.createStereoPanner();
     pan.pan.value = Math.random() * 0.6 - 0.3;
     const tone = ctx.createBiquadFilter();
@@ -486,7 +504,7 @@ export function createEngine(ctx) {
     amp.gain.setValueAtTime(0, t0);
     amp.gain.linearRampToValueAtTime(level, t0 + Math.min(2.5, (t1 - t0) / 2));
     amp.gain.setTargetAtTime(0, t1, 1.2);
-    amp.connect(tone).connect(pan).connect(s.out);
+    amp.connect(tone).connect(pan).connect(s.fondo);
 
     const sources = [-7, 7].map((cents) => {
       const osc = ctx.createOscillator();
@@ -505,10 +523,11 @@ export function createEngine(ctx) {
     const { prog } = s;
     const chord = prog.chords[index];
     const beat = 60 / s.bpm;
-    const end = start + prog.beats * beat;
+    const beats = prog.beats * engine.length;
+    const end = start + beats * beat;
     const play = INSTRUMENTS[prog.instrument] ?? piano;
 
-    const hits = TEXTURES[prog.texture](chord.midi, prog.beats)
+    const hits = TEXTURES[prog.texture](chord.midi, beats)
       .map((h) => ({ ...h, time: start + h.beat * beat }))
       .filter((h) => h.time < end)
       .sort((a, b) => a.time - b.time);
@@ -520,12 +539,16 @@ export function createEngine(ctx) {
       events.push({ session: s.id, time: h.time, type: 'note', index, pc: h.midi % 12 });
     });
 
-    if (prog.pad > 0) {
-      const padNotes = new Set(chord.midi.map((m) => (m < 43 ? m + 12 : m)));
-      for (const midi of padNotes) pad(s, midi, start, 0.018 * prog.pad, end);
-    }
+    // El fondo es el pad. Las progresiones que no lo usaban llevan uno suave, para que
+    // siempre haya un acorde sostenido sobre el que tocar.
+    const padLevel = 0.018 * (prog.pad > 0 ? prog.pad : FONDO_PAD);
+    const padNotes = new Set(chord.midi.map((m) => (m < 43 ? m + 12 : m)));
+    for (const midi of padNotes) pad(s, midi, start, padLevel, end);
 
-    events.push({ session: s.id, time: start, type: 'chord', index, duration: end - start });
+    events.push({ session: s.id, time: start, type: 'chord', index, duration: end - start, beats });
+    for (let b = 0; b < beats; b++) {
+      events.push({ session: s.id, time: start + b * beat, type: 'beat', index, beat: b, beats });
+    }
     events.sort((a, b) => a.time - b.time);
   }
 
@@ -548,9 +571,11 @@ export function createEngine(ctx) {
     session = null;
     clearInterval(s.timer);
     const t = ctx.currentTime;
-    s.out.gain.cancelScheduledValues(t);
-    s.out.gain.setValueAtTime(s.out.gain.value, t);
-    s.out.gain.setTargetAtTime(0, t, fade / 4);
+    for (const node of [s.out, s.meta]) {
+      node.gain.cancelScheduledValues(t);
+      node.gain.setValueAtTime(node.gain.value, t);
+      node.gain.setTargetAtTime(0, t, fade / 4);
+    }
     events = events.filter((e) => e.session !== s.id);
     setTimeout(() => {
       for (const src of s.sources) {
@@ -561,31 +586,64 @@ export function createEngine(ctx) {
         }
       }
       s.out.disconnect();
+      s.meta.disconnect();
     }, fade * 1000 + 300);
+  }
+
+  // Volumen de una capa. Al escuchar un acorde suelto suenan las dos, estén o no encendidas.
+  function layerLevel(name, audition) {
+    const layer = engine.layers[name];
+    return audition || layer.on ? layer.volume : 0;
   }
 
   const engine = {
     state: 'stopped', // 'stopped' | 'playing' | 'audition'
     onchange: null,
+    // Dos capas que comparten reloj: el fondo (pad sostenido) y el arpegio (el instrumento).
+    layers: { fondo: { on: true, volume: 1 }, arpegio: { on: true, volume: 1 } },
+    hold: false, // repetir el acorde actual en vez de avanzar
+    length: 1, // multiplica los pulsos que dura cada acorde
+    tuning: 440, // frecuencia del La central
 
     // Reproduce la progresión en bucle desde `from`, o solo ese acorde si `once`.
-    play(prog, { from = 0, bpm = prog.bpm, once = false } = {}) {
+    // countIn: pulsos de cuenta de entrada antes del primer acorde.
+    play(prog, { from = 0, bpm = prog.bpm, once = false, countIn = 0 } = {}) {
       silence(1.2);
       const out = ctx.createGain();
       out.gain.value = dbToGain(prog.gain ?? 0);
       out.connect(bus);
+      const meta = ctx.createGain();
+      meta.connect(bus);
       const s = {
         id: ++sessionCount,
         prog,
         bpm,
         out,
+        meta,
+        fondo: ctx.createGain(),
+        arpegio: ctx.createGain(),
         index: from,
+        lastIndex: from,
         next: ctx.currentTime + 0.05,
         remaining: once ? 1 : Infinity,
         sources: new Set(),
       };
+      for (const name of ['fondo', 'arpegio']) {
+        s[name].gain.value = layerLevel(name, once);
+        s[name].connect(out);
+      }
       session = s;
       setSpace(prog, bpm);
+
+      if (countIn > 0) {
+        const beat = 60 / bpm;
+        for (let i = 0; i < countIn; i++) {
+          const time = s.next + i * beat;
+          click(s, time, i === 0);
+          events.push({ session: s.id, time, type: 'count', n: countIn - i });
+        }
+        s.next += countIn * beat;
+      }
 
       const tick = () => {
         // Si el navegador congeló los temporizadores, se retoma desde ahora en vez de
@@ -593,8 +651,9 @@ export function createEngine(ctx) {
         if (s.remaining > 0 && s.next < ctx.currentTime) s.next = ctx.currentTime + 0.05;
         while (s.remaining > 0 && s.next < ctx.currentTime + LOOKAHEAD) {
           scheduleChord(s, s.index, s.next);
-          s.next += (prog.beats * 60) / s.bpm;
-          s.index = (s.index + 1) % prog.chords.length;
+          s.next += (prog.beats * engine.length * 60) / s.bpm;
+          s.lastIndex = s.index;
+          if (!engine.hold) s.index = (s.index + 1) % prog.chords.length;
           s.remaining--;
         }
         // Un acorde suelto termina solo: se deja sonar la cola y se libera la sesión.
@@ -604,7 +663,10 @@ export function createEngine(ctx) {
             session = null;
             setState('stopped');
           }
-          setTimeout(() => s.out.disconnect(), 10000);
+          setTimeout(() => {
+            s.out.disconnect();
+            s.meta.disconnect();
+          }, 10000);
         }
       };
       s.timer = setInterval(tick, TICK_MS);
@@ -622,6 +684,24 @@ export function createEngine(ctx) {
       if (!session) return;
       session.bpm = bpm;
       setSpace(session.prog, bpm);
+    },
+
+    // Enciende, apaga o cambia el volumen de una capa sin perder el compás.
+    setLayer(name, patch) {
+      Object.assign(engine.layers[name], patch);
+      if (session && session.remaining === Infinity) {
+        session[name].gain.setTargetAtTime(layerLevel(name, false), ctx.currentTime, 0.06);
+      }
+    },
+
+    // Al mantener, el acorde que está sonando se repite; al soltar, se sigue al siguiente.
+    // Si el siguiente ya estaba programado (último instante del acorde), se mantiene ese.
+    setHold(on) {
+      engine.hold = on;
+      const s = session;
+      if (!s || s.remaining !== Infinity) return;
+      if (on) s.index = s.lastIndex;
+      else if (s.index === s.lastIndex) s.index = (s.index + 1) % s.prog.chords.length;
     },
 
     // Devuelve los avisos cuyo momento ya llegó a los altavoces. Las notas que se quedaron
