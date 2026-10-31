@@ -4,7 +4,7 @@
 import { PROGRESSIONS } from './progressions.js';
 import { parseNote, noteName, scale, colorTones } from './theory.js';
 import { octaveSvg } from './keyboard.js';
-import { createEngine } from './audio.js';
+import { createEngine, GROOVES } from './audio.js';
 
 const byId = (id) => document.getElementById(id);
 const els = {
@@ -47,6 +47,8 @@ const els = {
   play: byId('play'),
   fondo: byId('layer-fondo'),
   arpegio: byId('layer-arpegio'),
+  groove: byId('groove'),
+  grooveName: byId('groove-name'),
   hold: byId('hold'),
   tempo: byId('tempo'),
   bpm: byId('bpm'),
@@ -90,6 +92,7 @@ const DEFAULTS = {
   length: 1,
   countIn: true,
   tuning: 440,
+  ritmo: 'pulso',
   midi: false,
 };
 
@@ -113,6 +116,7 @@ if (saved.version !== DEFAULTS.version) {
   settings.view = 'atril';
 }
 if (![0.5, 1, 2].includes(settings.length)) settings.length = 1;
+if (!GROOVES[settings.ritmo]) settings.ritmo = DEFAULTS.ritmo;
 settings.tuning = Math.min(450, Math.max(430, Number(settings.tuning) || 440));
 
 function saveSettings() {
@@ -347,6 +351,22 @@ function applySettings() {
   engine.setLayer('arpegio', { volume: volume(settings.arpegio) });
   engine.length = settings.length;
   engine.tuning = settings.tuning;
+  engine.groove = settings.ritmo;
+}
+
+// Ritmo del fondo: cada pulsación pasa al siguiente estilo. Se aplica desde el siguiente acorde.
+const GROOVE_ORDER = Object.keys(GROOVES);
+
+function cycleGroove() {
+  const next = GROOVE_ORDER[(GROOVE_ORDER.indexOf(settings.ritmo) + 1) % GROOVE_ORDER.length];
+  changeSetting('ritmo', next);
+}
+
+function updateGroove() {
+  els.grooveName.textContent = settings.ritmo;
+  const description = `Ritmo del fondo: ${settings.ritmo}, ${GROOVES[settings.ritmo].label}. Pulsa para cambiarlo (R).`;
+  els.groove.setAttribute('aria-label', description);
+  els.groove.title = description;
 }
 
 // El contexto de audio solo puede nacer de un gesto de la persona (clic o tecla).
@@ -450,7 +470,10 @@ function onBeat({ index, beat, beats }) {
   if (index !== state.current) return;
   const list = cards();
   const beatEl = list[index]?.querySelector('.card-beat');
-  if (beatEl) beatEl.textContent = `${beat + 1} / ${beats}`;
+  if (beatEl) {
+    beatEl.textContent = `${beat + 1} / ${beats}`;
+    replay(beatEl, 'tick'); // un destello en cada pulso, para verlo además de oírlo
+  }
   if (engine.hold) return;
   const countdown = list[(index + 1) % list.length]?.querySelector('.countdown');
   if (countdown) countdown.textContent = beats - beat <= 4 ? String(beats - beat) : '';
@@ -650,6 +673,7 @@ els.play.addEventListener('click', togglePlay);
 els.fondo.addEventListener('click', () => toggleLayer('fondo'));
 els.arpegio.addEventListener('click', () => toggleLayer('arpegio'));
 els.hold.addEventListener('click', toggleHold);
+els.groove.addEventListener('click', cycleGroove);
 
 els.tempo.addEventListener('input', () => {
   state.bpm = Number(els.tempo.value);
@@ -665,6 +689,7 @@ function updateSettingsUI() {
   els.tuning.value = settings.tuning;
   els.tuningValue.textContent = `La = ${String(settings.tuning).replace('.', ',')} Hz`;
   els.notation.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.notation === settings.notation)));
+  updateGroove();
 }
 
 function changeSetting(key, value) {
@@ -713,6 +738,8 @@ document.addEventListener('keydown', (e) => {
     toggleLayer('arpegio');
   } else if (key === 'm') {
     toggleHold();
+  } else if (key === 'r') {
+    cycleGroove();
   } else if (key === 'v') {
     setView(atrilOn() ? 'lectura' : 'atril');
   } else if (key === 'i') {

@@ -202,12 +202,70 @@ function makeImpulse(ctx, seconds = 6, decay = 1.15) {
   return buffer;
 }
 
+function softClipCurve(knee = 0.8, size = 4096) {
+  const curve = new Float32Array(size);
+  for (let i = 0; i < size; i++) {
+    const x = (i / (size - 1)) * 2 - 1;
+    const a = Math.abs(x);
+    curve[i] = a < knee ? x : Math.sign(x) * (knee + (1 - knee) * Math.tanh((a - knee) / (1 - knee)));
+  }
+  return curve;
+}
+
 function makeNoise(ctx) {
   const buffer = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
   const data = buffer.getChannelData(0);
   for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   return buffer;
 }
+
+// Ritmos del fondo.
+//   pump   cuánto respira el pad (0 = nada) y sub, cada cuántos pulsos
+//   shape  'golpe': acento en el tiempo, como un acorde pulsado;
+//          'bombeo': el pad se aparta en el tiempo para dejar sitio al bombo y vuelve a
+//          crecer, como el «sidechain» de la música electrónica
+//   hits   golpes de percusión de un compás de `meter` pulsos: [pulso, instrumento, intensidad]
+export const GROOVES = {
+  liso: { label: 'el acorde sostenido, sin ritmo', pump: 0 },
+  pulso: { label: 'el acorde respira en corcheas', pump: 0.55, sub: 0.5, shape: 'golpe' },
+  latido: {
+    label: 'el fondo bombea sobre un bombo suave, como un corazón',
+    pump: 0.4,
+    sub: 1,
+    shape: 'bombeo',
+    hits: (meter) =>
+      (meter === 4 ? [0, 2] : [0]).flatMap((b) => [
+        [b, 'bombo', 1],
+        [b + 0.3, 'bombo', 0.55],
+      ]),
+  },
+  balear: {
+    label: 'bombo, shaker y aro muy suaves, a ritmo lento',
+    pump: 0.3,
+    sub: 1,
+    shape: 'bombeo',
+    hits: (meter) => [
+      ...(meter === 4
+        ? [
+            [0, 'bombo', 1],
+            [2, 'bombo', 0.8],
+            [2.5, 'bombo', 0.45],
+          ]
+        : [[0, 'bombo', 1]]),
+      // Shaker en corcheas; las de contratiempo, más suaves y un poco tarde (swing).
+      ...Array.from({ length: meter * 2 }, (_, i) => [i / 2 + (i % 2 ? 0.06 : 0), 'shaker', i % 2 ? 0.55 : 0.85]),
+      ...(meter === 4
+        ? [
+            [1, 'aro', 0.8],
+            [3, 'aro', 0.8],
+          ]
+        : [
+            [1, 'aro', 0.7],
+            [2, 'aro', 0.6],
+          ]),
+    ],
+  },
+};
 
 // Parciales del piano: la fundamental y armónicos cada vez más débiles.
 const PARTIALS = [1, 0.5, 0.26, 0.15, 0.08, 0.045, 0.025];
@@ -232,7 +290,12 @@ export function createEngine(ctx) {
   limiter.ratio.value = 20;
   limiter.attack.value = 0.002;
   limiter.release.value = 0.15;
-  comp.connect(master).connect(limiter).connect(ctx.destination);
+  // Último seguro: por debajo de −2 dB no toca nada, y por encima redondea los picos que se
+  // cuelan al limitador (golpes de percusión muy rápidos) sin pasar nunca de 0 dB.
+  const safety = ctx.createWaveShaper();
+  safety.curve = softClipCurve();
+  safety.oversample = '2x';
+  comp.connect(master).connect(limiter).connect(safety).connect(ctx.destination);
 
   const bus = ctx.createGain();
   bus.connect(comp);
@@ -491,6 +554,128 @@ export function createEngine(ctx) {
     own(s, [osc], () => amp.disconnect());
   }
 
+  // --- Percusión del fondo: suave y seca (no pasa por la reverberación ni el eco). ---
+
+  // Bombo: un seno que cae de 150 a 48 Hz y un golpecito agudo, para que también se oiga
+  // en los altavoces de un portátil, que casi no dan graves.
+  function bombo(s, t0, vel) {
+    // Poco subgrave: no se oiría en un portátil y haría que el compresor bombeara toda la mezcla.
+    const osc = ctx.createOscillator();
+    osc.frequency.setValueAtTime(150, t0);
+    osc.frequency.exponentialRampToValueAtTime(58, t0 + 0.1);
+    const body = ctx.createGain();
+    body.gain.setValueAtTime(0, t0);
+    body.gain.linearRampToValueAtTime(0.1 * vel, t0 + 0.004);
+    body.gain.setTargetAtTime(0, t0 + 0.004, 0.07);
+    osc.connect(body).connect(s.ritmo);
+
+    const knock = ctx.createBufferSource();
+    knock.buffer = noise;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 1400;
+    band.Q.value = 1.5;
+    const tap = ctx.createGain();
+    tap.gain.setValueAtTime(0, t0);
+    tap.gain.linearRampToValueAtTime(0.08 * vel, t0 + 0.002);
+    tap.gain.setTargetAtTime(0, t0 + 0.002, 0.008);
+    knock.connect(band).connect(tap).connect(s.ritmo);
+
+    osc.start(t0);
+    osc.stop(t0 + 0.7);
+    knock.start(t0, Math.random() * 0.8, 0.06);
+    own(s, [osc, knock], () => {
+      body.disconnect();
+      tap.disconnect();
+    });
+  }
+
+  // Shaker: ruido muy agudo con un ataque algo blando.
+  function shaker(s, t0, vel) {
+    const src = ctx.createBufferSource();
+    src.buffer = noise;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 7500;
+    band.Q.value = 0.8;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = 0.3;
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0, t0);
+    amp.gain.linearRampToValueAtTime(0.045 * vel, t0 + 0.01);
+    amp.gain.setTargetAtTime(0, t0 + 0.01, 0.03);
+    src.connect(band).connect(amp).connect(pan).connect(s.ritmo);
+    src.start(t0, Math.random() * 0.8, 0.2);
+    own(s, [src], () => pan.disconnect());
+  }
+
+  // Aro: un golpe seco y corto en el borde del tambor.
+  function aro(s, t0, vel) {
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = 1750;
+    const src = ctx.createBufferSource();
+    src.buffer = noise;
+    const band = ctx.createBiquadFilter();
+    band.type = 'bandpass';
+    band.frequency.value = 2600;
+    band.Q.value = 2.5;
+    const pan = ctx.createStereoPanner();
+    pan.pan.value = -0.2;
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0, t0);
+    amp.gain.linearRampToValueAtTime(0.06 * vel, t0 + 0.001);
+    amp.gain.setTargetAtTime(0, t0 + 0.001, 0.014);
+    osc.connect(amp);
+    src.connect(band).connect(amp);
+    amp.connect(pan).connect(s.ritmo);
+    osc.start(t0);
+    osc.stop(t0 + 0.12);
+    src.start(t0, Math.random() * 0.8, 0.1);
+    own(s, [osc, src], () => pan.disconnect());
+  }
+
+  const DRUMS = { bombo, shaker, aro };
+
+  // El pad respira con el ritmo: la ganancia del fondo sube y baja en cada subdivisión.
+  function pumpChord(s, groove, start, beats, beat) {
+    const gain = s.pump.gain;
+    gain.setValueAtTime(1, start);
+    if (!groove.pump) return;
+    const step = groove.sub * beat;
+    const steps = Math.round(beats / groove.sub);
+    // Al respirar, el pad pierde volumen de media; se compensa para que no suene más flojo.
+    const makeup = 1 / (1 - groove.pump / 2);
+    const low = (1 - groove.pump) * makeup;
+    const high = makeup;
+    for (let k = 0; k < steps; k++) {
+      const t = start + k * step;
+      const accent = Number.isInteger(k * groove.sub) ? 1 : 0.6; // el tiempo, más que el contratiempo
+      if (groove.shape === 'golpe') {
+        gain.setValueAtTime(low, t);
+        gain.linearRampToValueAtTime(low + (high - low) * accent, t + 0.025);
+        gain.linearRampToValueAtTime(low, t + step * 0.95);
+      } else {
+        gain.setValueAtTime(high, t);
+        gain.linearRampToValueAtTime(high - (high - low) * accent, t + 0.02);
+        gain.linearRampToValueAtTime(high, t + step * 0.95);
+      }
+    }
+  }
+
+  function grooveChord(s, start, beats, beat) {
+    const groove = s.once ? GROOVES.liso : GROOVES[engine.groove] ?? GROOVES.liso;
+    pumpChord(s, groove, start, beats, beat);
+    if (!groove.hits) return;
+    const meter = s.prog.texture === 'vals' || beats % 4 !== 0 ? 3 : 4;
+    const bar = groove.hits(meter);
+    for (let b0 = 0; b0 < beats; b0 += meter) {
+      for (const [at, kind, vel] of bar) {
+        if (b0 + at < beats) DRUMS[kind](s, start + (b0 + at) * beat, vel);
+      }
+    }
+  }
+
   // Colchón de dos sierras desafinadas tras un filtro grave: entra y sale muy despacio.
   function pad(s, midi, t0, level, t1) {
     const f = hz(midi);
@@ -504,7 +689,7 @@ export function createEngine(ctx) {
     amp.gain.setValueAtTime(0, t0);
     amp.gain.linearRampToValueAtTime(level, t0 + Math.min(2.5, (t1 - t0) / 2));
     amp.gain.setTargetAtTime(0, t1, 1.2);
-    amp.connect(tone).connect(pan).connect(s.fondo);
+    amp.connect(tone).connect(pan).connect(s.pump);
 
     const sources = [-7, 7].map((cents) => {
       const osc = ctx.createOscillator();
@@ -544,6 +729,7 @@ export function createEngine(ctx) {
     const padLevel = 0.018 * (prog.pad > 0 ? prog.pad : FONDO_PAD);
     const padNotes = new Set(chord.midi.map((m) => (m < 43 ? m + 12 : m)));
     for (const midi of padNotes) pad(s, midi, start, padLevel, end);
+    grooveChord(s, start, beats, beat);
 
     events.push({ session: s.id, time: start, type: 'chord', index, duration: end - start, beats });
     for (let b = 0; b < beats; b++) {
@@ -571,7 +757,7 @@ export function createEngine(ctx) {
     session = null;
     clearInterval(s.timer);
     const t = ctx.currentTime;
-    for (const node of [s.out, s.meta]) {
+    for (const node of [s.out, s.meta, s.ritmo]) {
       node.gain.cancelScheduledValues(t);
       node.gain.setValueAtTime(node.gain.value, t);
       node.gain.setTargetAtTime(0, t, fade / 4);
@@ -587,6 +773,7 @@ export function createEngine(ctx) {
       }
       s.out.disconnect();
       s.meta.disconnect();
+      s.ritmo.disconnect();
     }, fade * 1000 + 300);
   }
 
@@ -604,6 +791,7 @@ export function createEngine(ctx) {
     hold: false, // repetir el acorde actual en vez de avanzar
     length: 1, // multiplica los pulsos que dura cada acorde
     tuning: 440, // frecuencia del La central
+    groove: 'pulso', // ritmo del fondo (ver GROOVES); se aplica desde el siguiente acorde
 
     // Reproduce la progresión en bucle desde `from`, o solo ese acorde si `once`.
     // countIn: pulsos de cuenta de entrada antes del primer acorde.
@@ -618,10 +806,13 @@ export function createEngine(ctx) {
         id: ++sessionCount,
         prog,
         bpm,
+        once,
         out,
         meta,
         fondo: ctx.createGain(),
         arpegio: ctx.createGain(),
+        pump: ctx.createGain(), // el pad pasa por aquí para respirar con el ritmo
+        ritmo: ctx.createGain(), // percusión del fondo, en seco
         index: from,
         lastIndex: from,
         next: ctx.currentTime + 0.05,
@@ -632,6 +823,9 @@ export function createEngine(ctx) {
         s[name].gain.value = layerLevel(name, once);
         s[name].connect(out);
       }
+      s.pump.connect(s.fondo);
+      s.ritmo.gain.value = layerLevel('fondo', once);
+      s.ritmo.connect(comp);
       session = s;
       setSpace(prog, bpm);
 
@@ -666,6 +860,7 @@ export function createEngine(ctx) {
           setTimeout(() => {
             s.out.disconnect();
             s.meta.disconnect();
+            s.ritmo.disconnect();
           }, 10000);
         }
       };
@@ -687,10 +882,13 @@ export function createEngine(ctx) {
     },
 
     // Enciende, apaga o cambia el volumen de una capa sin perder el compás.
+    // La percusión es parte del fondo: se enciende, se apaga y se regula con él.
     setLayer(name, patch) {
       Object.assign(engine.layers[name], patch);
-      if (session && session.remaining === Infinity) {
-        session[name].gain.setTargetAtTime(layerLevel(name, false), ctx.currentTime, 0.06);
+      if (session && !session.once) {
+        const level = layerLevel(name, false);
+        session[name].gain.setTargetAtTime(level, ctx.currentTime, 0.06);
+        if (name === 'fondo') session.ritmo.gain.setTargetAtTime(level, ctx.currentTime, 0.06);
       }
     },
 

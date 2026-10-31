@@ -869,6 +869,12 @@ body:has(.index[open]) {
   color: var(--on-accent);
 }
 
+/* El estilo de ritmo elegido, al lado de «Ritmo». */
+.layer-value {
+  min-width: 6ch;
+  color: var(--accent);
+}
+
 .icon-button {
   flex: none;
   width: 40px;
@@ -1223,6 +1229,18 @@ body.atril-mode {
   color: var(--ink-soft);
 }
 
+/* Destello en cada pulso. */
+.card-beat.tick {
+  animation: tick 0.35s ease-out;
+}
+
+@keyframes tick {
+  from {
+    color: var(--accent);
+    text-shadow: 0 0 10px color-mix(in oklab, var(--accent) 60%, transparent);
+  }
+}
+
 .card .chord-name {
   font-size: clamp(22px, 13cqh, 64px);
 }
@@ -1449,10 +1467,12 @@ body.atril-mode {
     justify-content: center;
   }
 
-  .layer-label {
+  .layer-label,
+  .layer-value {
     position: absolute;
     width: 1px;
     height: 1px;
+    min-width: 0;
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;

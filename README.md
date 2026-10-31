@@ -64,6 +64,14 @@ Bruma está pensada también como acompañamiento para tocar el piano encima.
 - **Fondo** (tecla **F**) y **Arpegio** (tecla **A**) son dos capas que comparten el mismo reloj. El fondo es el
   acorde sostenido (pad); el arpegio, lo que toca el instrumento. Se pueden encender por separado: con solo el
   fondo, el arpegio lo pones tú. Si enciendes una con la otra sonando, entra a tiempo.
+- **Ritmo** (tecla **R**) cambia el carácter del fondo, desde el siguiente acorde:
+  - **liso**: el acorde sostenido, sin ritmo.
+  - **pulso**: el acorde respira en corcheas, con acento en cada tiempo. Sin percusión.
+  - **latido**: el fondo «bombea» sobre un bombo suave, como un corazón.
+  - **balear**: bombo, shaker y aro muy suaves, a ritmo lento.
+
+  La percusión es parte del fondo: se apaga y se regula con él. El bombo lleva un golpe agudo para que se
+  oiga también en los altavoces de un portátil.
 - **Mantener** (tecla **M**) repite el acorde que suena hasta que lo sueltas, para explorar sobre él.
 - **Atril**: la vista con la que se abre la app. Todos los acordes caben en la pantalla sin desplazarse,
   también en un portátil pequeño. El acorde que suena se marca como «ahora», el siguiente lleva una cuenta
@@ -79,7 +87,7 @@ Bruma está pensada también como acompañamiento para tocar el piano encima.
 ## Publicar cambios
 
 GitHub Pages publica sola la rama `main`. Como deja que el navegador guarde los archivos unos minutos, todos
-llevan una versión en la dirección (`?v=5`): al publicar cambios hay que subir ese número en todas las líneas
+llevan una versión en la dirección (`?v=6`): al publicar cambios hay que subir ese número en todas las líneas
 de `index.html` que lo llevan, para que nadie mezcle archivos viejos con nuevos.
 
 ## Probar en local

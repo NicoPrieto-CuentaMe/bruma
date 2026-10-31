@@ -22,18 +22,18 @@
       actualización no se mezclen archivos viejos y nuevos, todos llevan la versión en la
       dirección: al publicar cambios, se sube el número en todas las líneas con «?v=».
     -->
-    <link rel="stylesheet" href="css/styles.css?v=5" />
+    <link rel="stylesheet" href="css/styles.css?v=6" />
     <script type="importmap">
       {
         "imports": {
-          "./js/audio.js": "./js/audio.js?v=5",
-          "./js/keyboard.js": "./js/keyboard.js?v=5",
-          "./js/progressions.js": "./js/progressions.js?v=5",
-          "./js/theory.js": "./js/theory.js?v=5"
+          "./js/audio.js": "./js/audio.js?v=6",
+          "./js/keyboard.js": "./js/keyboard.js?v=6",
+          "./js/progressions.js": "./js/progressions.js?v=6",
+          "./js/theory.js": "./js/theory.js?v=6"
         }
       }
     </script>
-    <script type="module" src="js/app.js?v=5"></script>
+    <script type="module" src="js/app.js?v=6"></script>
   </head>
   <body>
     <div class="mist" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -219,6 +219,13 @@
         <button class="layer" id="layer-arpegio" type="button" aria-pressed="false" title="Arpegio (A)">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19h4v-4h4v-4h4V7h4V3" /></svg>
           <span class="layer-label">Arpegio</span>
+        </button>
+        <button class="layer groove" id="groove" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3 12h2.5l2-5 3 10 3-12 3 10 2-3H21" />
+          </svg>
+          <span class="layer-label">Ritmo</span>
+          <span class="layer-value" id="groove-name"></span>
         </button>
         <button class="layer" id="hold" type="button" aria-pressed="false" title="Mantener el acorde (M)">
           <svg viewBox="0 0 24 24" aria-hidden="true">
