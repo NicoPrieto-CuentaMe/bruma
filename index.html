@@ -17,8 +17,23 @@
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=Jost:wght@200;300;400;500&display=swap"
     />
-    <link rel="stylesheet" href="css/styles.css" />
-    <script type="module" src="js/app.js"></script>
+    <!--
+      GitHub Pages deja que el navegador guarde los archivos 10 minutos. Para que tras una
+      actualización no se mezclen archivos viejos y nuevos, todos llevan la versión en la
+      dirección: al publicar cambios, se sube el número en todas las líneas con «?v=».
+    -->
+    <link rel="stylesheet" href="css/styles.css?v=5" />
+    <script type="importmap">
+      {
+        "imports": {
+          "./js/audio.js": "./js/audio.js?v=5",
+          "./js/keyboard.js": "./js/keyboard.js?v=5",
+          "./js/progressions.js": "./js/progressions.js?v=5",
+          "./js/theory.js": "./js/theory.js?v=5"
+        }
+      }
+    </script>
+    <script type="module" src="js/app.js?v=5"></script>
   </head>
   <body>
     <div class="mist" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -98,6 +113,15 @@
           <span><i class="swatch swatch-color"></i>color</span>
           <span><i class="swatch swatch-pressed"></i>tus teclas</span>
         </p>
+        <button
+          class="icon-button"
+          type="button"
+          popovertarget="sobre"
+          aria-label="Sobre esta progresión"
+          title="Sobre esta progresión"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 11v5.5M12 7.8v.1" /></svg>
+        </button>
         <button class="arrow" id="atril-next" type="button" aria-label="Progresión siguiente">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5" /></svg>
         </button>
@@ -114,6 +138,12 @@
     </section>
 
     <div class="count-in" id="count-in" aria-hidden="true" hidden></div>
+
+    <div class="settings about" id="sobre" popover aria-label="Sobre esta progresión">
+      <p class="settings-title" id="sobre-titulo"></p>
+      <p class="about-meta" id="sobre-meta"></p>
+      <p class="about-text" id="sobre-texto"></p>
+    </div>
 
     <dialog class="index" id="index" aria-labelledby="index-title">
       <div class="index-head">

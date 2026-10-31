@@ -31,6 +31,9 @@ const els = {
   atrilReference: byId('atril-reference'),
   atrilKey: byId('atril-key'),
   atrilIndex: byId('atril-index'),
+  aboutTitle: byId('sobre-titulo'),
+  aboutMeta: byId('sobre-meta'),
+  aboutText: byId('sobre-texto'),
   toLectura: byId('to-lectura'),
   countIn: byId('count-in'),
 
@@ -79,8 +82,9 @@ for (const prog of PROGRESSIONS) {
 // localStorage puede no estar disponible (modo privado, almacenamiento bloqueado):
 // entonces los ajustes duran solo esta visita.
 const DEFAULTS = {
+  version: 2,
   notation: 'letters',
-  view: 'lectura',
+  view: 'atril',
   fondo: 100,
   arpegio: 100,
   length: 1,
@@ -100,7 +104,14 @@ function loadSettings() {
   }
 }
 
-const settings = { ...DEFAULTS, ...loadSettings() };
+const saved = loadSettings();
+const settings = { ...DEFAULTS, ...saved };
+// Antes la app se abría en la vista de lectura; desde la versión 2 se abre en el atril,
+// donde caben todos los acordes. Quien tuviera guardada la lectura pasa al atril una vez.
+if (saved.version !== DEFAULTS.version) {
+  settings.version = DEFAULTS.version;
+  settings.view = 'atril';
+}
 if (![0.5, 1, 2].includes(settings.length)) settings.length = 1;
 settings.tuning = Math.min(450, Math.max(430, Number(settings.tuning) || 440));
 
@@ -236,13 +247,15 @@ function layoutAtril() {
   const { width, height } = els.atrilGrid.getBoundingClientRect();
   if (!width || !height) return;
   const gap = 14;
-  const header = 96; // insignia, cifrado y notas, por encima de la octava
   let best = 1;
   let bestWidth = 0;
   for (let cols = 1; cols <= n; cols++) {
     const rows = Math.ceil(n / cols);
     const cardW = (width - gap * (cols - 1)) / cols;
     const cardH = (height - gap * (rows - 1)) / rows;
+    // Lo que ocupa la cabecera de la tarjeta (insignia, cifrado y notas); en tarjetas
+    // bajas la línea de notas se esconde (ver el @container del CSS).
+    const header = cardH < 230 ? 66 : 100;
     const keys = Math.min(cardW - 32, (cardH - header) * (700 / 220));
     if (keys > bestWidth) {
       bestWidth = keys;
@@ -270,6 +283,9 @@ function render({ animate = true } = {}) {
     els.atrilKey.textContent = keyLabel(prog);
     els.atrilPrev.setAttribute('aria-label', `Anterior: ${prevTitle}`);
     els.atrilNext.setAttribute('aria-label', `Siguiente: ${nextTitle}`);
+    els.aboutTitle.textContent = `${prog.title}, ${reference}`;
+    els.aboutMeta.textContent = [keyLabel(prog), prog.sound, prog.texture].join(' · ');
+    els.aboutText.textContent = prog.description;
     els.atrilGrid.replaceChildren(...prog.chords.map(atrilCard));
     layoutAtril();
   } else {

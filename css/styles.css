@@ -984,6 +984,28 @@ input[type='range']::-moz-range-thumb {
   border-top: 0;
 }
 
+/* «Sobre esta progresión»: el texto de la vista de lectura, a mano desde el atril. */
+.about {
+  inset: 64px max(16px, calc((100vw - 980px) / 2)) auto auto;
+  width: min(420px, calc(100vw - 32px));
+}
+
+.about-meta {
+  margin: 4px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--ink-faint);
+}
+
+.about-text {
+  margin: 12px 0 4px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+
 .setting output {
   color: var(--ink);
 }
@@ -1258,6 +1280,25 @@ body.atril-mode {
   height: 3px;
 }
 
+/* Tarjetas bajas (pantallas pequeñas o con zoom): fuera la línea de notas, que ya están
+   escritas en las teclas, para que la octava conserve tamaño. */
+@container (max-height: 230px) {
+  .card-sub {
+    display: none;
+  }
+}
+
+@container (max-height: 150px) {
+  .card-button {
+    padding-block: 6px 8px;
+  }
+
+  .card-top {
+    min-height: 0;
+    font-size: 10px;
+  }
+}
+
 .atril-legend {
   flex: none;
   display: flex;
@@ -1349,6 +1390,47 @@ body.atril-mode {
 @keyframes progress {
   to {
     transform: scaleX(1);
+  }
+}
+
+/* --- Pantallas bajas: portátiles con la barra de tareas y la del navegador --- */
+
+@media (max-height: 620px) {
+  .transport {
+    padding-block: 8px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .play {
+    width: 44px;
+    height: 44px;
+  }
+
+  .layer,
+  .icon-button {
+    height: 36px;
+  }
+
+  .icon-button {
+    width: 36px;
+  }
+
+  .atril {
+    gap: 8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .atril-head .arrow {
+    width: 34px;
+    height: 34px;
+  }
+
+  .atril-title h2 {
+    font-size: 24px;
+  }
+
+  .atril-grid {
+    gap: 10px;
   }
 }
 

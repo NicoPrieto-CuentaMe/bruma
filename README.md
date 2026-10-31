@@ -65,14 +65,22 @@ Bruma está pensada también como acompañamiento para tocar el piano encima.
   acorde sostenido (pad); el arpegio, lo que toca el instrumento. Se pueden encender por separado: con solo el
   fondo, el arpegio lo pones tú. Si enciendes una con la otra sonando, entra a tiempo.
 - **Mantener** (tecla **M**) repite el acorde que suena hasta que lo sueltas, para explorar sobre él.
-- **Atril** (tecla **V**): una vista que cabe entera en la pantalla. El acorde que suena se marca como
-  «ahora», el siguiente lleva una cuenta atrás de los últimos cuatro pulsos, y en cada octava se ven, más
-  tenues, las **notas de color**: las de la escala que suenan bien sobre ese acorde sin chocar.
+- **Atril**: la vista con la que se abre la app. Todos los acordes caben en la pantalla sin desplazarse,
+  también en un portátil pequeño. El acorde que suena se marca como «ahora», el siguiente lleva una cuenta
+  atrás de los últimos cuatro pulsos, y en cada octava se ven, más tenues, las **notas de color**: las de la
+  escala que suenan bien sobre ese acorde sin chocar. El botón **i** muestra la explicación de la
+  progresión, y la tecla **V** cambia a la vista de **lectura**, con las octavas una debajo de otra.
 - **Ajustes**: volumen de cada capa, duración de cada acorde (×½, ×1, ×2), cuenta de entrada de un compás,
   afinación (La = 430–450 Hz) y nombres de las notas (C D E / Do Re Mi).
 - **Piano MIDI**: con el piano conectado por USB (en Chrome o Edge), las teclas que tocas se marcan en la
   octava del acorde que suena; las que no son del acorde ni de color se ven en gris.
 - Mientras suena, la pantalla no se apaga.
+
+## Publicar cambios
+
+GitHub Pages publica sola la rama `main`. Como deja que el navegador guarde los archivos unos minutos, todos
+llevan una versión en la dirección (`?v=5`): al publicar cambios hay que subir ese número en todas las líneas
+de `index.html` que lo llevan, para que nadie mezcle archivos viejos con nuevos.
 
 ## Probar en local
 
